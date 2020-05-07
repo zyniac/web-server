@@ -1,0 +1,21 @@
+{
+    "General": {
+        "Serve": {
+            "Domain": "localhost",
+            "Port": 7777
+        },
+        "File": {
+            "Directory": "data",
+            "Default": "index.html"
+        }
+    },
+    "Types": {
+        "json": "application/json",
+        "png": "image/png",
+        "jpg": "image/jpg",
+        "html": "text/html",
+        "css": "text/css",
+        "js": "text/javascript",
+        "wasm": "application/wasm"
+    }
+}

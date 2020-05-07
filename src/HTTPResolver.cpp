@@ -7,7 +7,7 @@ constexpr Zyniac::MapArray<HTTPResolver::HTTPArgument, 6> ArgumentTypes = {{"Acc
                                                                                     {"DNT", HTTPResolver::HTTPArgument::DNT}, {"Upgrade-Insecure-Requests", HTTPResolver::HTTPArgument::UPGRADE_INSECURE_REQUESTS},
                                                                                     {"Connection", HTTPResolver::HTTPArgument::CONNECTION}, {"Host", HTTPResolver::HTTPArgument::HOST}};
 
-bool HTTPResolver::rhead(HTTPData& httpData, std::string head)
+bool HTTPResolver::rhead(HTTPRequestData& httpData, std::string head)
 {
     // METHOD
     size_t gCut = head.find(' ');
@@ -58,7 +58,7 @@ bool HTTPResolver::rhead(HTTPData& httpData, std::string head)
     
 }
 
-bool HTTPResolver::cpath(HTTPData& data)
+bool HTTPResolver::cpath(HTTPRequestData& data)
 {
     size_t pos = data.head.path.raw.find('.');
     size_t getPos = data.head.path.raw.find('?', pos);
@@ -76,6 +76,13 @@ bool HTTPResolver::cpath(HTTPData& data)
 
     size_t pointBefore = pos;
     size_t pointAfter = 0;
+
+    if(*data.head.path.raw.begin() == '/') {
+        data.head.path.slash.bStart = true;
+    }
+    if(*(data.head.path.raw.end()-1) == '/') {
+        data.head.path.slash.bEnd = true;
+    }
 
     if(pos != std::string::npos && pos < getPos) // Dot is in url
     {
@@ -105,7 +112,7 @@ bool HTTPResolver::cpath(HTTPData& data)
     return true;
 }
 
-bool HTTPResolver::rargument(HTTPData& data, const std::string& argument)
+bool HTTPResolver::rargument(HTTPRequestData& data, const std::string& argument)
 {
     size_t aCut = argument.find(": ");
     if(aCut > 0 && argument.size() > aCut)
@@ -159,7 +166,7 @@ bool HTTPResolver::rargument(HTTPData& data, const std::string& argument)
     }
 }
 
-bool HTTPResolver::httpd(HTTPData& httpData, const std::string& http)
+bool HTTPResolver::httpd(HTTPRequestData& httpData, const std::string& http)
 {
     // TODO SPLIT HEADER FROM DOCUMENT!
     std::vector<std::string> lines;
@@ -182,6 +189,10 @@ bool HTTPResolver::httpd(HTTPData& httpData, const std::string& http)
             // HTTPResolver::rargument() for every next line
             for(int i = 1; i < lines.size(); ++i)
             {
+                if(lines[i].size() < 3)
+                {
+                    return true; // Probably end here (except has no document)
+                }
                 if(!HTTPResolver::rargument(httpData, lines[i]))
                 {
                     return false;
@@ -289,7 +300,6 @@ bool HTTPResolver::rkeepalivea(HeaderValue& value, const std::string& strValue)
         }
         else
         {
-            std::cout << "Error 1" << std::endl;
             return false;
         }
     }
@@ -320,4 +330,36 @@ bool HTTPResolver::rkeepalivea(HeaderValue& value, const std::string& strValue)
     }
 
     return true;
+}
+
+bool HTTPResolver::dhttph(const HTTPRequestData& data, HTTPResponse& http, unsigned short statusCode, const char* statusMessage)
+{
+    switch(data.head.version)
+    {
+        case HTTPResolver::ProtoVersion::HTTP11:
+            http.document << "HTTP/1.1 ";
+        break;
+
+        case HTTPResolver::ProtoVersion::HTTP10:
+            http.document << "HTTP/1.0 ";
+        break;
+    }
+    http.document << statusCode << " " << statusMessage << "\r\n";
+    return true;
+
+}
+
+bool HTTPResolver::dhttpa(HTTPResponse& http, const char* title, const char* value)
+{
+    http.document << title << ": " << value << "\r\n";
+    return true;
+
+}
+
+bool HTTPResolver::dhttpd(HTTPResponse& http, const char* data, size_t length)
+{
+    http.document << "Content-Length: " << length << "\r\n\r\n";
+    http.document.write(data, length);
+    return true;
+    
 }
